@@ -78,7 +78,13 @@ This dataset contains information from the Mr. Trashwheel trash collector in Bal
 ```{r}
 nyc_transit_df = 
   read_csv(
-    "./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv") %>%
+    "./data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv",
+    col_types = cols(
+      Route8 = col_character(),
+      Route9 = col_character(),
+      Route10 = col_character(),
+      Route11 = col_character()
+    )) %>%
   janitor::clean_names() %>%
   select(line:entry, vending, ada) %>%
   mutate(
@@ -88,8 +94,37 @@ nyc_transit_df =
 nyc_transit_df
 ```
 
-This dataset contains data about NYC subway stations' names, routes and geographical locations. Also, it includes information of the entrance type, whether there is an entry or vending, and whether or not the ADA is complied with. 
+This dataset contains data about line, stations' names, geographical locations and routes served. Also, it includes information of the entrance type, whether there exists an entry or vending, and whether the ADA is complied with. 
 By far, I have cleaned up variable names to lower_snake_case, and selected only the columns of variables that I am interested in. 
+
 There are `r nrow(nyc_transit_df)` rows and `r ncol(nyc_transit_df)` columns of the resulting dataset. These data are currently not tidy at all, because for example, some columns could have been combined together for tidiness. 
 
+There are `r nrow(distinct(nyc_transit_df, line, station_name))` distinct stations shown in the dataset. 
+
+In addition, there are `r filter(nyc_transit_df, ada == "TRUE") %>% distinct(line, station_name) %>% count()` distinct stations compliant with ADA.
+
+The number of entrances without vending is `r nrow(filter(nyc_transit_df, vending == "NO"))`. Among these entrances, there are `r nrow(filter(nyc_transit_df, vending == "NO" & entry == "TRUE"))` allowing entry. Thus, the proportion of entrances without vending that allow entry would be `r 100*(nrow(filter(nyc_transit_df, vending == "NO" & entry == "TRUE"))) / (nrow(filter(nyc_transit_df, vending == "NO")))` %.
+
+
+Reformatting data.
+
+```{r}
+nyc_tidy = 
+  pivot_longer(
+  nyc_transit_df,
+  route1:route11,
+  names_to = "route_names",
+  values_to = "route_numbers",
+  names_prefix = "route") %>%
+  distinct(station_name, line, route_names, route_numbers, .keep_all = TRUE)
+```
+
+For distinct stations, there are `r nrow(filter(nyc_tidy,route_numbers == "A"))` serving the A train, of which there are `r nrow(filter(nyc_tidy, route_numbers == "A") %>% filter(ada == "TRUE"))` ADA compliant.
+
+
+## Problem3
+
+```{r}
+
+```
 
