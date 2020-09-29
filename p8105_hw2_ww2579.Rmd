@@ -7,6 +7,7 @@ output: github_document
 ```{r setup}
 library(tidyverse)
 library(readxl)
+library(dbplyr)
 ```
 
 ## Problem 1
@@ -124,7 +125,85 @@ For distinct stations, there are `r nrow(filter(nyc_tidy,route_numbers == "A"))`
 
 ## Problem3
 
-```{r}
+```{r pols}
+pols_month = 
+  read_csv(
+    "./data/pols-month.csv") %>%
+  janitor::clean_names()
 
+pols_month =
+  separate(pols_month, mon, into = c("year", "month_num", "day")) %>%
+  mutate(
+    year = as.integer(year),
+    month_num = as.integer(month_num),
+    day = as.integer(day)) %>%
+  select(-prez_gop,-prez_dem,-day) %>%
+  pivot_longer(
+  gov_gop:rep_dem,
+  names_to = "president",
+  values_to = "pol")
+
+month_df = 
+  tibble(month_num = 1:12,
+          month = month.abb)
+joina_df = left_join(month_df,pols_month, by = "month_num")
+pols_df = select(joina_df, -month_num) %>%
+  relocate(year, month)
 ```
+
+```{r snp}
+snp = 
+  read_csv(
+    "./data/snp.csv") %>%
+  janitor::clean_names()
+
+snp =
+  separate(snp, date, into = c("month_num", "day","year")) %>%
+  mutate(
+    year = as.integer(year),
+    month_num = as.integer(month_num),
+    day = as.integer(day)) %>%
+  select(-day)
+
+month_df = 
+  tibble(month_num = 1:12,
+          month = month.abb)
+
+joinb_df = left_join(month_df,snp, by = "month_num")
+
+snp_df = select(joinb_df,-month_num) %>%
+  relocate(year, month)
+```
+
+```{r unemployment}
+unemployment = 
+  read_csv(
+    "./data/unemployment.csv") %>%
+  pivot_longer(
+    Jan:Dec,
+    names_to = "month",
+    values_to = "unemp") %>%
+  janitor::clean_names()
+```
+Merge 3 datasets.
+
+```{r merged}
+snp_pols = 
+  left_join(snp_df,pols_df, by = c("year","month"))
+
+all_df = 
+  left_join(unemployment, snp_pols, by = c("year","month"))
+
+all_df
+```
+
+The pol_df dataset contains information about presidents and their corresponding "pols" integers in each month from `r min(pull(pols_df,year))` to `r max(pull(pols_df, year))`. I used function **separate()** to break "mon" into three different variables. The columns of "prez_dem", "prez_gop" and "day" were removed by using **select()**. Then other "gop" and "dem" columns were combined by function **pivot_longer()**.
+
+The snp_df includes data of `r names(snp_df)`, from `r min(pull(snp_df, year))` to `r max(pull(snp_df, year))`. The first two datasets were both replaced month numbers with month names by creating a separate dataframe which was then merged into the dataset using **left_join()**.
+
+The third dataset of unemployment has `r nrow(unemployment)` rows and `r ncol(unemployment)` columns. The data ranges from `r min(pull(unemployment,year))` to `r max(pull(unemployment, year))`.
+
+The merged dataset with combined information from the previous three datasets, which contains `r nrow(all_df)` rows and `r ncol(all_df)` columns. Variables includes `r names(all_df)`. The merging is based on the common columns "year" and "month", by the function **left_join**.
+
+
 
